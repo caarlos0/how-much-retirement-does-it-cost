@@ -1,6 +1,7 @@
 import './style.css';
 import { CURRENCIES } from './currencies';
 import { futureValue, monthsToTarget, type Plan } from './finance';
+import { progressionChart } from './chart';
 
 const STORAGE_KEY = 'retirement-calc:v1';
 
@@ -34,6 +35,7 @@ const els = {
   price: byId<HTMLInputElement>('price'),
   baseline: byId<HTMLParagraphElement>('baseline'),
   impact: byId<HTMLDivElement>('impact'),
+  chart: byId<HTMLDivElement>('chart'),
 };
 
 for (const { code, name } of CURRENCIES) {
@@ -149,6 +151,8 @@ function render(): void {
   }
 
   const price = numVal(els.price);
+  els.chart.innerHTML = progressionChart({ plan, currency, age: s.age });
+
   if (price == null || price <= 0) {
     els.impact.innerHTML = `<p class="cap">Enter a price above to see what it really costs you.</p>`;
     return;

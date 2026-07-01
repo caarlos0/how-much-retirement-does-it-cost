@@ -181,3 +181,79 @@ footer {
   text-align: center;
   margin-top: 28px;
 }
+
+.chart-wrap {
+  margin-top: 4px;
+}
+
+.chart {
+  width: 100%;
+  height: auto;
+  display: block;
+  overflow: visible;
+}
+
+.chart-axis {
+  stroke: var(--border);
+}
+
+.chart-target {
+  stroke: var(--muted);
+  stroke-dasharray: 5 4;
+  opacity: 0.8;
+}
+
+.chart-line-base {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2.5;
+  stroke-linejoin: round;
+}
+
+.chart-dot-base {
+  fill: var(--card);
+  stroke: var(--accent);
+  stroke-width: 2.5;
+}
+
+.chart text {
+  font-size: 11px;
+}
+
+.chart-ylabel {
+  fill: var(--muted);
+  text-anchor: end;
+  dominant-baseline: middle;
+}
+
+.chart-xlabel {
+  fill: var(--muted);
+  text-anchor: middle;
+}
+
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 12px;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.chart-key {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.chart-sw {
+  width: 14px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--muted);
+  display: inline-block;
+}
+
+.chart-sw-base {
+  background: var(--accent);
+}

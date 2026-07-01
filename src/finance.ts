@@ -40,3 +40,10 @@ export function monthsToTarget(start: number, plan: Plan): number {
 export function futureValue(present: number, monthlyRate: number, months: number): number {
   return present * Math.pow(1 + monthlyRate, months);
 }
+
+/** Account balance after `months`, from the plan's savings, contributions and rate. */
+export function balanceAt(months: number, plan: Plan): number {
+  const { savings: S, monthly: M, monthlyRate: r } = plan;
+  if (r === 0) return S + M * months;
+  return (S + M / r) * Math.pow(1 + r, months) - M / r;
+}
