@@ -194,6 +194,16 @@ footer {
   margin-top: 28px;
 }
 
+footer a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+footer a:hover {
+  color: var(--fg);
+}
+
 .chart-wrap {
   margin-top: 4px;
   position: relative;
