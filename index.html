@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>How much retirement does it cost?</title>
+  </head>
+  <body>
+    <div class="wrap">
+      <header>
+        <h1>How much retirement does it cost?</h1>
+        <p>See what a purchase really costs you — in future retirement money and in time.</p>
+      </header>
+
+      <section class="card">
+        <h2>Your plan</h2>
+        <div class="grid">
+          <div class="field">
+            <label for="age">Current age</label>
+            <input id="age" type="number" inputmode="numeric" min="0" step="1" placeholder="30" />
+          </div>
+          <div class="field">
+            <label for="currency">Currency</label>
+            <select id="currency"></select>
+          </div>
+          <div class="field">
+            <label for="savings">Current savings</label>
+            <input id="savings" type="number" inputmode="decimal" min="0" step="any" placeholder="10000" />
+          </div>
+          <div class="field">
+            <label for="monthly">Invested monthly</label>
+            <input id="monthly" type="number" inputmode="decimal" min="0" step="any" placeholder="1000" />
+          </div>
+          <div class="field">
+            <label for="yield">Real monthly yield (%) <span class="hint">— return after inflation</span></label>
+            <input id="yield" type="number" inputmode="decimal" step="any" placeholder="0.4" />
+          </div>
+          <div class="field">
+            <label for="target">Retirement target</label>
+            <input id="target" type="number" inputmode="decimal" min="0" step="any" placeholder="1000000" />
+          </div>
+        </div>
+        <p id="baseline" class="baseline"></p>
+      </section>
+
+      <section class="card">
+        <h2>Should I buy it?</h2>
+        <div class="field price-wrap">
+          <label for="price">Price of the thing you want</label>
+          <input id="price" type="number" inputmode="decimal" min="0" step="any" placeholder="1000" />
+        </div>
+        <div id="impact" class="impact"></div>
+      </section>
+
+      <footer>Everything is saved in your browser. Not financial advice.</footer>
+    </div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
