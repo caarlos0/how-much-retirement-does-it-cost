@@ -27,7 +27,7 @@ export function monthsToTarget(start: number, plan: Plan): number {
 
   const denom = start + M / r;
   const numer = T + M / r;
-  if (denom === 0) return -M / r >= T ? 0 : Infinity;
+  if (denom === 0) return Infinity; // balance is frozen below the target — never reached
 
   const ratio = numer / denom;
   if (ratio <= 0) return Infinity;

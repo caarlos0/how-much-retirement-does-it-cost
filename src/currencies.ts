@@ -1,9 +1,4 @@
-export interface Currency {
-  code: string;
-  name: string;
-}
-
-export const CURRENCIES: Currency[] = [
+export const CURRENCIES = [
   { code: 'USD', name: 'US Dollar' },
   { code: 'EUR', name: 'Euro' },
   { code: 'GBP', name: 'British Pound' },

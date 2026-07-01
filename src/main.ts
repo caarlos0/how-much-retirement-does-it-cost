@@ -36,11 +36,8 @@ const els = {
   impact: byId<HTMLDivElement>('impact'),
 };
 
-for (const c of CURRENCIES) {
-  const option = document.createElement('option');
-  option.value = c.code;
-  option.textContent = `${c.code} — ${c.name}`;
-  els.currency.appendChild(option);
+for (const { code, name } of CURRENCIES) {
+  els.currency.add(new Option(`${code} — ${name}`, code));
 }
 
 function numVal(el: HTMLInputElement): number | null {
@@ -121,9 +118,6 @@ function humanDuration(months: number): string {
   return parts.join(' ') || '—';
 }
 
-const escapeHtml = (s: string) =>
-  s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
-
 function render(): void {
   const s = readSettings();
   save(s);
@@ -136,6 +130,7 @@ function render(): void {
     monthlyRate: rate,
     target: s.target ?? 0,
   };
+  const targetMoney = money(plan.target, currency);
 
   const hasTarget = plan.target > 0;
   const monthsBase = hasTarget ? monthsToTarget(plan.savings, plan) : NaN;
@@ -145,17 +140,12 @@ function render(): void {
   if (!hasTarget) {
     els.baseline.textContent = 'Set a retirement target to see your projection.';
   } else if (monthsBase <= 0) {
-    els.baseline.textContent = `You have already reached ${money(plan.target, currency)}. 🎉`;
+    els.baseline.textContent = `You have already reached ${targetMoney}. 🎉`;
   } else if (!Number.isFinite(monthsBase)) {
-    els.baseline.textContent = `With these numbers you never reach ${money(
-      plan.target,
-      currency,
-    )}. Try a higher monthly investment or yield.`;
+    els.baseline.textContent = `With these numbers you never reach ${targetMoney}. Try a higher monthly investment or yield.`;
   } else {
     const agePart = retireAge != null ? ` — around age ${retireAge}` : '';
-    els.baseline.textContent = `On track to reach ${money(plan.target, currency)} in ${humanDuration(
-      monthsBase,
-    )}${agePart}.`;
+    els.baseline.textContent = `On track to reach ${targetMoney} in ${humanDuration(monthsBase)}${agePart}.`;
   }
 
   const price = numVal(els.price);
@@ -167,9 +157,7 @@ function render(): void {
   if (!hasTarget || monthsBase <= 0) {
     els.impact.innerHTML = `
       <div class="big small">Enjoy it — you're already set. 🎉</div>
-      <p class="cap">Spending ${escapeHtml(
-        money(price, currency),
-      )} won't set back a retirement you've already funded.</p>`;
+      <p class="cap">Spending ${money(price, currency)} won't set back a retirement you've already funded.</p>`;
     return;
   }
 
@@ -185,20 +173,18 @@ function render(): void {
     0,
     monthsBase - (Number.isFinite(monthsIfInvested) ? monthsIfInvested : monthsBase),
   );
-
+  const delayText = humanDuration(delay);
   const agePart = retireAge != null ? ` (around age ${retireAge})` : '';
 
   els.impact.innerHTML = `
-    <div class="cap">That ${escapeHtml(money(price, currency))} could grow to</div>
-    <div class="big">${escapeHtml(money(fv, currency))}</div>
+    <div class="cap">That ${money(price, currency)} could grow to</div>
+    <div class="big">${money(fv, currency)}</div>
     <div class="cap">by the time you retire${agePart}.</div>
     <div class="chips">
-      <span class="chip">⏳ Delays retirement by <span class="v">${humanDuration(delay)}</span></span>
+      <span class="chip">⏳ Delays retirement by <span class="v">${delayText}</span></span>
       <span class="chip">📈 <span class="v">${multiple.toFixed(1)}×</span> your money</span>
     </div>
-    <p class="note">Buying it today is like working about ${humanDuration(
-      delay,
-    )} longer before you can retire.</p>`;
+    <p class="note">Buying it today is like working about ${delayText} longer before you can retire.</p>`;
 }
 
 applySettings(load());
