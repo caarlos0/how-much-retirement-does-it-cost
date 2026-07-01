@@ -9,8 +9,8 @@
     "typecheck": "tsc --noEmit"
   },
   "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "author": "Carlos Alexandro Becker",
+  "license": "MIT",
   "devEngines": {
     "packageManager": {
       "name": "pnpm",
