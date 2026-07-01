@@ -12,8 +12,25 @@ import { renderChart } from './chart';
 const STORAGE_KEY = 'retirement-calc:v2';
 const LEGACY_KEY = 'retirement-calc:v1';
 
+const isoDate = (d: Date) => d.toISOString().slice(0, 10);
+
+/** ISO birth date for someone `years` old today (used for the default and migration). */
+function birthDateForAge(years: number): string {
+  const d = new Date();
+  d.setFullYear(d.getFullYear() - Math.round(years));
+  return isoDate(d);
+}
+
+/** Current age in fractional years from an ISO birth date, or null if unset/invalid. */
+function ageFromBirthDate(birthDate: string | null): number | null {
+  if (!birthDate) return null;
+  const ms = Date.now() - new Date(birthDate).getTime();
+  if (!Number.isFinite(ms) || ms < 0) return null;
+  return ms / (365.2425 * 24 * 60 * 60 * 1000);
+}
+
 interface Settings {
-  age: number | null;
+  birthDate: string | null;
   savings: number | null;
   currency: string;
   monthly: number | null;
@@ -22,7 +39,7 @@ interface Settings {
 }
 
 const DEFAULTS: Settings = {
-  age: 30,
+  birthDate: birthDateForAge(30),
   savings: 10000,
   currency: 'USD',
   monthly: 1000,
@@ -33,7 +50,7 @@ const DEFAULTS: Settings = {
 const byId = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
 const els = {
-  age: byId<HTMLInputElement>('age'),
+  birthDate: byId<HTMLInputElement>('birthdate'),
   savings: byId<HTMLInputElement>('savings'),
   currency: byId<HTMLSelectElement>('currency'),
   monthly: byId<HTMLInputElement>('monthly'),
@@ -58,7 +75,7 @@ function numVal(el: HTMLInputElement): number | null {
 
 function readSettings(): Settings {
   return {
-    age: numVal(els.age),
+    birthDate: els.birthDate.value || null,
     savings: numVal(els.savings),
     currency: els.currency.value || 'USD',
     monthly: numVal(els.monthly),
@@ -69,7 +86,7 @@ function readSettings(): Settings {
 
 function applySettings(s: Settings): void {
   const str = (v: number | null) => (v == null ? '' : String(v));
-  els.age.value = str(s.age);
+  els.birthDate.value = s.birthDate ?? '';
   els.savings.value = str(s.savings);
   els.currency.value = s.currency || 'USD';
   els.monthly.value = str(s.monthly);
@@ -77,17 +94,26 @@ function applySettings(s: Settings): void {
   els.target.value = str(s.target);
 }
 
+/** Merge stored settings over the defaults, deriving a birth date from a legacy age. */
+function withBirthDate(stored: Partial<Settings> & { age?: number }): Settings {
+  const merged = { ...DEFAULTS, ...stored };
+  if (stored.birthDate == null && stored.age != null) {
+    merged.birthDate = birthDateForAge(stored.age);
+  }
+  return merged;
+}
+
 function load(): Settings {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return { ...DEFAULTS, ...(JSON.parse(raw) as Partial<Settings>) };
+    if (raw) return withBirthDate(JSON.parse(raw));
 
     const legacy = localStorage.getItem(LEGACY_KEY);
     if (legacy) {
-      const old = { ...DEFAULTS, ...(JSON.parse(legacy) as Partial<Settings>) };
+      const old = JSON.parse(legacy) as Partial<Settings> & { age?: number };
       // v1 stored the yield as a monthly %; v2 stores it yearly.
       if (old.yield != null) old.yield = Math.round(yearlyPctFromMonthly(old.yield) * 100) / 100;
-      return old;
+      return withBirthDate(old);
     }
     return { ...DEFAULTS };
   } catch {
@@ -152,7 +178,8 @@ function render(): void {
   const hasTarget = plan.target > 0;
   const monthsBase = hasTarget ? monthsToTarget(plan.savings, plan) : NaN;
   const reachable = Number.isFinite(monthsBase) && monthsBase > 0;
-  const retireAge = s.age != null ? Math.round(s.age + monthsBase / 12) : null;
+  const age = ageFromBirthDate(s.birthDate);
+  const retireAge = age != null ? Math.round(age + monthsBase / 12) : null;
 
   if (!hasTarget) {
     els.baseline.textContent = 'Set a retirement target to see your projection.';
@@ -166,7 +193,7 @@ function render(): void {
   }
 
   const price = numVal(els.price);
-  renderChart(els.chart, { plan, currency, age: s.age, yieldPct: s.yield ?? 0 });
+  renderChart(els.chart, { plan, currency, age, yieldPct: s.yield ?? 0 });
 
   if (price == null || price <= 0) {
     els.impact.innerHTML = `<p class="cap">Enter a price above to see what it really costs you.</p>`;
@@ -207,7 +234,7 @@ function render(): void {
 }
 
 applySettings(load());
-for (const el of [els.age, els.savings, els.monthly, els.yield, els.target, els.price]) {
+for (const el of [els.birthDate, els.savings, els.monthly, els.yield, els.target, els.price]) {
   el.addEventListener('input', render);
 }
 els.currency.addEventListener('change', render);
