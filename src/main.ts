@@ -7,7 +7,7 @@ import {
   yearlyPctFromMonthly,
   type Plan,
 } from './finance';
-import { progressionChart } from './chart';
+import { renderChart } from './chart';
 
 const STORAGE_KEY = 'retirement-calc:v2';
 const LEGACY_KEY = 'retirement-calc:v1';
@@ -166,7 +166,7 @@ function render(): void {
   }
 
   const price = numVal(els.price);
-  els.chart.innerHTML = progressionChart({ plan, currency, age: s.age, yieldPct: s.yield ?? 0 });
+  renderChart(els.chart, { plan, currency, age: s.age, yieldPct: s.yield ?? 0 });
 
   if (price == null || price <= 0) {
     els.impact.innerHTML = `<p class="cap">Enter a price above to see what it really costs you.</p>`;

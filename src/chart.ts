@@ -26,18 +26,18 @@ function compactMoney(value: number, currency: string): string {
 }
 
 /**
- * Inline SVG chart of projected savings growth toward the target: the plan's
- * central curve plus a shaded band spanning a ±YIELD_BAND_PP yearly-return range.
+ * Render an inline SVG chart of projected savings growth into `container`: the
+ * plan's central curve plus a shaded band spanning a ±YIELD_BAND_PP yearly-return
+ * range. Hovering reveals the projected values at that point in time.
  */
-export function progressionChart(opts: {
-  plan: Plan;
-  currency: string;
-  age: number | null;
-  yieldPct: number;
-}): string {
+export function renderChart(
+  container: HTMLElement,
+  opts: { plan: Plan; currency: string; age: number | null; yieldPct: number },
+): void {
   const { plan, currency, age, yieldPct } = opts;
   if (plan.target <= 0) {
-    return `<p class="cap">Set a retirement target to see your projected growth.</p>`;
+    container.innerHTML = `<p class="cap">Set a retirement target to see your projected growth.</p>`;
+    return;
   }
 
   const monthsBase = monthsToTarget(plan.savings, plan);
@@ -95,6 +95,16 @@ export function progressionChart(opts: {
     parts.push(`<circle class="chart-dot-base" cx="${xOf(monthsBase).toFixed(1)}" cy="${yTarget.toFixed(1)}" r="4" />`);
   }
 
+  parts.push(
+    `<g class="chart-hover" style="display:none">` +
+      `<line class="chart-cursor" x1="0" x2="0" y1="${PAD.t}" y2="${yBottom.toFixed(1)}" />` +
+      `<circle class="chart-hover-dot chart-hover-edge" r="3" />` +
+      `<circle class="chart-hover-dot chart-hover-edge" r="3" />` +
+      `<circle class="chart-hover-dot chart-hover-base" r="4" />` +
+      `</g>`,
+    `<rect class="chart-capture" x="${PAD.l}" y="${PAD.t}" width="${plotW.toFixed(1)}" height="${plotH.toFixed(1)}" />`,
+  );
+
   const svg = `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Projected savings growth over time, with a range for higher and lower returns">${parts.join('')}</svg>`;
 
   const legend = `<div class="chart-legend">
@@ -103,5 +113,53 @@ export function progressionChart(opts: {
     <span class="chart-key"><span class="chart-sw chart-sw-target"></span>Target</span>
   </div>`;
 
-  return svg + legend;
+  container.innerHTML = `${svg}${legend}<div class="chart-tooltip" hidden></div>`;
+
+  const svgEl = container.querySelector<SVGSVGElement>('.chart');
+  const hover = container.querySelector<SVGGElement>('.chart-hover');
+  const cursor = container.querySelector<SVGLineElement>('.chart-cursor');
+  const tip = container.querySelector<HTMLDivElement>('.chart-tooltip');
+  const dots = container.querySelectorAll<SVGCircleElement>('.chart-hover-dot');
+  if (!svgEl || !hover || !cursor || !tip || dots.length < 3) return;
+  const [dotLow, dotHigh, dotBase] = dots;
+
+  const setDot = (el: SVGCircleElement, cx: number, v: number) => {
+    el.setAttribute('cx', cx.toFixed(1));
+    el.setAttribute('cy', yOf(v).toFixed(1));
+  };
+
+  svgEl.addEventListener('pointermove', (ev) => {
+    const rect = svgEl.getBoundingClientRect();
+    if (rect.width === 0) return;
+    const scale = W / rect.width;
+    const svgX = Math.max(PAD.l, Math.min(xEnd, (ev.clientX - rect.left) * scale));
+    const i = Math.max(0, Math.min(SAMPLES, Math.round(((svgX - PAD.l) / plotW) * SAMPLES)));
+    const cx = xOf(xs[i]);
+
+    cursor.setAttribute('x1', cx.toFixed(1));
+    cursor.setAttribute('x2', cx.toFixed(1));
+    setDot(dotBase, cx, baseVals[i]);
+    setDot(dotLow, cx, lowVals[i]);
+    setDot(dotHigh, cx, highVals[i]);
+    hover.style.display = '';
+
+    const when = age != null ? `Age ${Math.round(age + xs[i] / 12)}` : `Year ${Math.round(xs[i] / 12)}`;
+    tip.innerHTML =
+      `<div class="chart-tt-when">${when}</div>` +
+      `<div class="chart-tt-row"><span class="chart-sw chart-sw-base"></span>${compactMoney(baseVals[i], currency)}</div>` +
+      `<div class="chart-tt-range">${compactMoney(lowVals[i], currency)} – ${compactMoney(highVals[i], currency)}</div>`;
+    tip.hidden = false;
+
+    const px = cx / scale;
+    const py = yOf(baseVals[i]) / scale;
+    const rightHalf = cx > (PAD.l + xEnd) / 2;
+    tip.style.left = `${px.toFixed(1)}px`;
+    tip.style.top = `${py.toFixed(1)}px`;
+    tip.style.transform = `translate(${rightHalf ? 'calc(-100% - 14px)' : '14px'}, -50%)`;
+  });
+
+  svgEl.addEventListener('pointerleave', () => {
+    hover.style.display = 'none';
+    tip.hidden = true;
+  });
 }
