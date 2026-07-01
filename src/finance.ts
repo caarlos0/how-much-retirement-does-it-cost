@@ -47,3 +47,9 @@ export function balanceAt(months: number, plan: Plan): number {
   if (r === 0) return S + M * months;
   return (S + M / r) * Math.pow(1 + r, months) - M / r;
 }
+
+/** Yearly yield % to the equivalent monthly compounding rate (decimal). */
+export const monthlyRateFromYearly = (yearlyPct: number) => Math.pow(1 + yearlyPct / 100, 1 / 12) - 1;
+
+/** Monthly yield % to the equivalent yearly yield % (used to migrate old data). */
+export const yearlyPctFromMonthly = (monthlyPct: number) => (Math.pow(1 + monthlyPct / 100, 12) - 1) * 100;

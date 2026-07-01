@@ -1,16 +1,16 @@
 import './style.css';
 import { CURRENCIES } from './currencies';
-import { futureValue, monthsToTarget, type Plan } from './finance';
+import {
+  futureValue,
+  monthlyRateFromYearly,
+  monthsToTarget,
+  yearlyPctFromMonthly,
+  type Plan,
+} from './finance';
 import { progressionChart } from './chart';
 
 const STORAGE_KEY = 'retirement-calc:v2';
 const LEGACY_KEY = 'retirement-calc:v1';
-
-/** Yearly yield % to the equivalent monthly compounding rate (decimal). */
-const monthlyRateFromYearly = (yearlyPct: number) => Math.pow(1 + yearlyPct / 100, 1 / 12) - 1;
-
-/** Monthly yield % (v1 storage) to the equivalent yearly yield %. */
-const yearlyPctFromMonthly = (monthlyPct: number) => (Math.pow(1 + monthlyPct / 100, 12) - 1) * 100;
 
 interface Settings {
   age: number | null;
@@ -166,7 +166,7 @@ function render(): void {
   }
 
   const price = numVal(els.price);
-  els.chart.innerHTML = progressionChart({ plan, currency, age: s.age });
+  els.chart.innerHTML = progressionChart({ plan, currency, age: s.age, yieldPct: s.yield ?? 0 });
 
   if (price == null || price <= 0) {
     els.impact.innerHTML = `<p class="cap">Enter a price above to see what it really costs you.</p>`;
