@@ -11,13 +11,7 @@
   "keywords": [],
   "author": "Carlos Alexandro Becker",
   "license": "MIT",
-  "devEngines": {
-    "packageManager": {
-      "name": "pnpm",
-      "version": "^11.9.0",
-      "onFail": "download"
-    }
-  },
+  "packageManager": "pnpm@11.9.0",
   "type": "module",
   "devDependencies": {
     "typescript": "^6.0.3",
