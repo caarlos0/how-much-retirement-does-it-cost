@@ -3,7 +3,14 @@ import { CURRENCIES } from './currencies';
 import { futureValue, monthsToTarget, type Plan } from './finance';
 import { progressionChart } from './chart';
 
-const STORAGE_KEY = 'retirement-calc:v1';
+const STORAGE_KEY = 'retirement-calc:v2';
+const LEGACY_KEY = 'retirement-calc:v1';
+
+/** Yearly yield % to the equivalent monthly compounding rate (decimal). */
+const monthlyRateFromYearly = (yearlyPct: number) => Math.pow(1 + yearlyPct / 100, 1 / 12) - 1;
+
+/** Monthly yield % (v1 storage) to the equivalent yearly yield %. */
+const yearlyPctFromMonthly = (monthlyPct: number) => (Math.pow(1 + monthlyPct / 100, 12) - 1) * 100;
 
 interface Settings {
   age: number | null;
@@ -19,7 +26,7 @@ const DEFAULTS: Settings = {
   savings: 10000,
   currency: 'USD',
   monthly: 1000,
-  yield: 0.4,
+  yield: 5,
   target: 1_000_000,
 };
 
@@ -73,8 +80,16 @@ function applySettings(s: Settings): void {
 function load(): Settings {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return { ...DEFAULTS };
-    return { ...DEFAULTS, ...(JSON.parse(raw) as Partial<Settings>) };
+    if (raw) return { ...DEFAULTS, ...(JSON.parse(raw) as Partial<Settings>) };
+
+    const legacy = localStorage.getItem(LEGACY_KEY);
+    if (legacy) {
+      const old = { ...DEFAULTS, ...(JSON.parse(legacy) as Partial<Settings>) };
+      // v1 stored the yield as a monthly %; v2 stores it yearly.
+      if (old.yield != null) old.yield = Math.round(yearlyPctFromMonthly(old.yield) * 100) / 100;
+      return old;
+    }
+    return { ...DEFAULTS };
   } catch {
     return { ...DEFAULTS };
   }
@@ -125,7 +140,7 @@ function render(): void {
   save(s);
 
   const currency = s.currency || 'USD';
-  const rate = (s.yield ?? 0) / 100;
+  const rate = monthlyRateFromYearly(s.yield ?? 0);
   const plan: Plan = {
     savings: s.savings ?? 0,
     monthly: s.monthly ?? 0,
