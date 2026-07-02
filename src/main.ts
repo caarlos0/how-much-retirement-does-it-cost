@@ -9,7 +9,7 @@ import {
   yearlyPctFromMonthly,
   type Plan,
 } from './finance';
-import { renderChart } from './chart';
+import { renderChart, renderContributionsChart } from './chart';
 
 const STORAGE_KEY = 'retirement-calc:v2';
 const LEGACY_KEY = 'retirement-calc:v1';
@@ -67,6 +67,7 @@ const els = {
   faster: byId<HTMLDivElement>('faster'),
   impact: byId<HTMLDivElement>('impact'),
   chart: byId<HTMLDivElement>('chart'),
+  contribChart: byId<HTMLDivElement>('contrib-chart'),
 };
 
 for (const { code, name } of CURRENCIES) {
@@ -259,6 +260,7 @@ function render(): void {
     withdrawal: s.withdrawal ?? 0,
     purchase: price != null && price > 0 ? price : 0,
   });
+  renderContributionsChart(els.contribChart, { plan, currency, age, withdrawal: s.withdrawal ?? 0 });
   renderSuggestions(plan, currency, monthsBase, age);
 
   if (price == null || price <= 0) {
