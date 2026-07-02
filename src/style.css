@@ -346,14 +346,6 @@ footer a:hover {
   opacity: 0.07;
 }
 
-.chart-sw-putin {
-  background: var(--accent);
-}
-
-.chart-sw-yield {
-  background: var(--good);
-}
-
 .chart-dot-base {
   fill: var(--card);
   stroke: var(--accent);
@@ -417,6 +409,16 @@ footer a:hover {
   border-radius: 2px;
   background: var(--accent);
   opacity: 0.35;
+}
+
+.chart-sw-putin {
+  height: 10px;
+  background: var(--accent);
+}
+
+.chart-sw-yield {
+  height: 10px;
+  background: var(--good);
 }
 
 .chart-capture {
