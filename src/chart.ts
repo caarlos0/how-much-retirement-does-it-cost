@@ -244,30 +244,35 @@ export function renderChart(
     if (rect.width === 0) return;
     const scale = W / rect.width;
     const svgX = Math.max(PAD.l, Math.min(xEnd, (ev.clientX - rect.left) * scale));
-    const i = Math.max(0, Math.min(SAMPLES, Math.round(((svgX - PAD.l) / plotW) * SAMPLES)));
-    const cx = xOf(xs[i]);
+    // Snap to whole years so the value matches the yearly bar chart exactly.
+    const m = Math.min(horizon, Math.round((((svgX - PAD.l) / plotW) * horizon) / 12) * 12);
+    const cx = xOf(m);
+    const baseV = balanceOf(m, plan.monthlyRate);
+    const lowV = balanceOf(m, lowRate);
+    const highV = balanceOf(m, highRate);
+    const investV = showInvest ? balanceOf(m, plan.monthlyRate, plan.savings + purchase) : 0;
 
     cursor.setAttribute('x1', cx.toFixed(1));
     cursor.setAttribute('x2', cx.toFixed(1));
-    setDot(dotBase, cx, baseVals[i]);
-    setDot(dotLow, cx, lowVals[i]);
-    setDot(dotHigh, cx, highVals[i]);
-    if (dotInvest) setDot(dotInvest, cx, investVals[i]);
+    setDot(dotBase, cx, baseV);
+    setDot(dotLow, cx, lowV);
+    setDot(dotHigh, cx, highV);
+    if (dotInvest) setDot(dotInvest, cx, investV);
     hover.style.display = '';
 
-    const when = age != null ? `Age ${Math.round(age + xs[i] / 12)}` : `Year ${Math.round(xs[i] / 12)}`;
+    const when = age != null ? `Age ${Math.round(age + m / 12)}` : `Year ${Math.round(m / 12)}`;
     const investRow = showInvest
-      ? `<div class="chart-tt-row"><span class="chart-sw chart-sw-invest"></span>If you invest it<span class="chart-tt-val">${compactMoney(investVals[i], currency)}</span></div>`
+      ? `<div class="chart-tt-row"><span class="chart-sw chart-sw-invest"></span>If you invest it<span class="chart-tt-val">${compactMoney(investV, currency)}</span></div>`
       : '';
     tip.innerHTML =
       `<div class="chart-tt-when">${when}</div>` +
-      `<div class="chart-tt-row"><span class="chart-sw chart-sw-base"></span>Your plan<span class="chart-tt-val">${compactMoney(baseVals[i], currency)}</span></div>` +
+      `<div class="chart-tt-row"><span class="chart-sw chart-sw-base"></span>Your plan<span class="chart-tt-val">${compactMoney(baseV, currency)}</span></div>` +
       investRow +
-      `<div class="chart-tt-row"><span class="chart-sw chart-sw-band"></span>Range<span class="chart-tt-val">${compactMoney(lowVals[i], currency)} – ${compactMoney(highVals[i], currency)}</span></div>`;
+      `<div class="chart-tt-row"><span class="chart-sw chart-sw-band"></span>Range<span class="chart-tt-val">${compactMoney(lowV, currency)} – ${compactMoney(highV, currency)}</span></div>`;
     tip.hidden = false;
 
     const px = cx / scale;
-    const py = yOf(baseVals[i]) / scale;
+    const py = yOf(baseV) / scale;
     const rightHalf = cx > (PAD.l + xEnd) / 2;
     tip.style.left = `${px.toFixed(1)}px`;
     tip.style.top = `${py.toFixed(1)}px`;
