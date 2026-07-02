@@ -53,3 +53,16 @@ export const monthlyRateFromYearly = (yearlyPct: number) => Math.pow(1 + yearlyP
 
 /** Monthly yield % to the equivalent yearly yield % (used to migrate old data). */
 export const yearlyPctFromMonthly = (monthlyPct: number) => (Math.pow(1 + monthlyPct / 100, 12) - 1) * 100;
+
+/**
+ * Monthly contribution needed to grow from `start` up to `plan.target` in exactly
+ * `months`, at the plan's rate. This is the inverse of {@link monthsToTarget}:
+ * solving FV(months) = target for the contribution M.
+ */
+export function requiredMonthly(start: number, months: number, plan: Plan): number {
+  const { monthlyRate: r, target: T } = plan;
+  if (months <= 0) return Infinity;
+  if (r === 0) return (T - start) / months;
+  const g = Math.pow(1 + r, months);
+  return (r * (T - start * g)) / (g - 1);
+}

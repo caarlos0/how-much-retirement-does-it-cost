@@ -4,6 +4,7 @@ import {
   futureValue,
   monthlyRateFromYearly,
   monthsToTarget,
+  requiredMonthly,
   yearlyPctFromMonthly,
   type Plan,
 } from './finance';
@@ -58,6 +59,8 @@ const els = {
   target: byId<HTMLInputElement>('target'),
   price: byId<HTMLInputElement>('price'),
   baseline: byId<HTMLParagraphElement>('baseline'),
+  fasterCard: byId<HTMLElement>('faster-card'),
+  faster: byId<HTMLDivElement>('faster'),
   impact: byId<HTMLDivElement>('impact'),
   chart: byId<HTMLDivElement>('chart'),
 };
@@ -161,6 +164,44 @@ function humanDuration(months: number): string {
   return parts.join(' ') || '—';
 }
 
+/** "Years sooner" options to suggest, smallest to largest. */
+const FASTER_YEARS = [1, 2, 3, 5, 10];
+
+/**
+ * Suggest bumping the monthly contribution to reach the target sooner. Shows the
+ * two largest "years sooner" options that still leave at least half a year of
+ * runway, or hides the card when there's nothing actionable to suggest.
+ */
+function renderSuggestions(
+  plan: Plan,
+  currency: string,
+  monthsBase: number,
+  age: number | null,
+): void {
+  const items: string[] = [];
+
+  if (Number.isFinite(monthsBase) && monthsBase > 12) {
+    const options = FASTER_YEARS.filter((yr) => monthsBase - yr * 12 >= 6).slice(-2);
+    for (const yr of options) {
+      const months = monthsBase - yr * 12;
+      const monthly = requiredMonthly(plan.savings, months, plan);
+      const extra = monthly - plan.monthly;
+      if (!(extra > 0)) continue;
+      const newAge = age != null ? Math.round(age + months / 12) : null;
+      const agePart = newAge != null ? ` (age ${newAge})` : '';
+      items.push(
+        `<li class="faster-item">
+          <span class="faster-lead">Invest <strong>${money(monthly, currency)}/mo</strong> <span class="faster-extra">+${money(extra, currency)}</span></span>
+          <span class="faster-sub">retire about ${humanDuration(yr * 12)} sooner${agePart}</span>
+        </li>`,
+      );
+    }
+  }
+
+  els.fasterCard.hidden = items.length === 0;
+  els.faster.innerHTML = items.length ? `<ul class="faster-list">${items.join('')}</ul>` : '';
+}
+
 function render(): void {
   const s = readSettings();
   save(s);
@@ -194,6 +235,7 @@ function render(): void {
 
   const price = numVal(els.price);
   renderChart(els.chart, { plan, currency, age, yieldPct: s.yield ?? 0 });
+  renderSuggestions(plan, currency, monthsBase, age);
 
   if (price == null || price <= 0) {
     els.impact.innerHTML = `<p class="cap">Enter a price above to see what it really costs you.</p>`;

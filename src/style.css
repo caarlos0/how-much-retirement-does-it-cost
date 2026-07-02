@@ -155,6 +155,40 @@ input[type='date']::-webkit-calendar-picker-indicator {
   margin: 16px 0 0;
 }
 
+.faster-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.faster-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px 14px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.faster-lead {
+  font-size: 1rem;
+}
+
+.faster-extra {
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+.faster-sub {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
 .price-wrap input {
   font-size: 1.4rem;
   font-weight: 700;
