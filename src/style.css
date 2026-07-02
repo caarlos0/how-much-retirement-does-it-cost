@@ -131,6 +131,24 @@ select {
   background-position: right 12px center;
 }
 
+/* Normalize the native date control so it matches the other fields, especially on iOS. */
+input[type='date'] {
+  appearance: none;
+  -webkit-appearance: none;
+  height: 46px;
+}
+
+input[type='date']::-webkit-date-and-time-value {
+  text-align: left;
+  margin: 0;
+}
+
+input[type='date']::-webkit-calendar-picker-indicator {
+  margin: 0;
+  opacity: 0.65;
+  cursor: pointer;
+}
+
 .baseline {
   color: var(--muted);
   font-size: 0.9rem;
