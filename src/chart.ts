@@ -79,12 +79,17 @@ export function renderChart(
 
   // Balance at month m for a given monthly rate: accumulate toward the target,
   // then (once retired) draw the withdrawal down each month, never below zero.
-  const balanceOf = (m: number, rate: number): number => {
-    if (!drawingDown || m <= retireMonths) {
-      return balanceAt(m, { ...plan, monthlyRate: rate });
+  const balanceOf = (
+    m: number,
+    rate: number,
+    savings: number = plan.savings,
+    retireAt: number = retireMonths,
+  ): number => {
+    if (!drawingDown || m <= retireAt) {
+      return balanceAt(m, { ...plan, savings, monthlyRate: rate });
     }
-    const atRetire = balanceAt(retireMonths, { ...plan, monthlyRate: rate });
-    const drawn = balanceAt(m - retireMonths, {
+    const atRetire = balanceAt(retireAt, { ...plan, savings, monthlyRate: rate });
+    const drawn = balanceAt(m - retireAt, {
       ...plan,
       savings: atRetire,
       monthly: -withdrawal,
@@ -98,7 +103,16 @@ export function renderChart(
   const lowVals = xs.map((m) => balanceOf(m, lowRate));
   const highVals = xs.map((m) => balanceOf(m, highRate));
 
-  const yMax = Math.max(plan.target, ...highVals, ...baseVals, ...lowVals) * 1.06;
+  // "If you invest it instead": the plan with the purchase money added to savings.
+  // It reaches the target sooner, then draws down through the rest of the timeline.
+  const investRetire =
+    reachable && purchase > 0 ? monthsToTarget(plan.savings + purchase, plan) : Infinity;
+  const showInvest = Number.isFinite(investRetire) && investRetire > 0;
+  const investVals = showInvest
+    ? xs.map((m) => balanceOf(m, plan.monthlyRate, plan.savings + purchase, investRetire))
+    : [];
+
+  const yMax = Math.max(plan.target, ...highVals, ...baseVals, ...lowVals, ...investVals) * 1.06;
   const plotW = W - PAD.l - PAD.r;
   const plotH = H - PAD.t - PAD.b;
   const xOf = (m: number) => PAD.l + (m / horizon) * plotW;
@@ -123,21 +137,12 @@ export function renderChart(
       `<text class="chart-marker-label" x="${xOf(retireMonths).toFixed(1)}" y="${(PAD.t - 5).toFixed(1)}">retire</text>`
     : '';
 
-  // "If you invest it instead" line: accumulate the extra purchase money and reach
-  // the target sooner. Drawn only through accumulation, ending on the target line.
-  const investRetire = reachable && purchase > 0
-    ? monthsToTarget(plan.savings + purchase, plan)
-    : Infinity;
-  const showInvest = Number.isFinite(investRetire) && investRetire > 0;
-  let investLine = '';
-  let investDot = '';
-  if (showInvest) {
-    const investPlan: Plan = { ...plan, savings: plan.savings + purchase };
-    const pts = xs.filter((m) => m <= investRetire).map((m) => pt(m, balanceAt(m, investPlan)));
-    pts.push(pt(investRetire, plan.target));
-    investLine = `<polyline class="chart-line-invest" points="${pts.join(' ')}" />`;
-    investDot = `<circle class="chart-dot-invest" cx="${xOf(investRetire).toFixed(1)}" cy="${yTarget.toFixed(1)}" r="4" />`;
-  }
+  const investLine = showInvest
+    ? `<polyline class="chart-line-invest" points="${line(investVals)}" />`
+    : '';
+  const investDot = showInvest
+    ? `<circle class="chart-dot-invest" cx="${xOf(investRetire).toFixed(1)}" cy="${yTarget.toFixed(1)}" r="4" />`
+    : '';
 
   const parts = [
     `<line class="chart-axis" x1="${PAD.l}" y1="${PAD.t}" x2="${PAD.l}" y2="${yBottom.toFixed(1)}" />`,
