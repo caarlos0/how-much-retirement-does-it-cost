@@ -79,17 +79,12 @@ export function renderChart(
 
   // Balance at month m for a given monthly rate: accumulate toward the target,
   // then (once retired) draw the withdrawal down each month, never below zero.
-  const balanceOf = (
-    m: number,
-    rate: number,
-    savings: number = plan.savings,
-    retireAt: number = retireMonths,
-  ): number => {
-    if (!drawingDown || m <= retireAt) {
+  const balanceOf = (m: number, rate: number, savings: number = plan.savings): number => {
+    if (!drawingDown || m <= retireMonths) {
       return balanceAt(m, { ...plan, savings, monthlyRate: rate });
     }
-    const atRetire = balanceAt(retireAt, { ...plan, savings, monthlyRate: rate });
-    const drawn = balanceAt(m - retireAt, {
+    const atRetire = balanceAt(retireMonths, { ...plan, savings, monthlyRate: rate });
+    const drawn = balanceAt(m - retireMonths, {
       ...plan,
       savings: atRetire,
       monthly: -withdrawal,
@@ -103,13 +98,14 @@ export function renderChart(
   const lowVals = xs.map((m) => balanceOf(m, lowRate));
   const highVals = xs.map((m) => balanceOf(m, highRate));
 
-  // "If you invest it instead": the plan with the purchase money added to savings.
-  // It reaches the target sooner, then draws down through the rest of the timeline.
-  const investRetire =
+  // "If you invest it instead": the plan with the purchase money kept invested.
+  // It crosses the target sooner but retires on the same date, so the extra money
+  // keeps compounding and the gap to your plan grows over time (its true cost).
+  const investHitsTarget =
     reachable && purchase > 0 ? monthsToTarget(plan.savings + purchase, plan) : Infinity;
-  const showInvest = Number.isFinite(investRetire) && investRetire > 0;
+  const showInvest = Number.isFinite(investHitsTarget) && investHitsTarget > 0;
   const investVals = showInvest
-    ? xs.map((m) => balanceOf(m, plan.monthlyRate, plan.savings + purchase, investRetire))
+    ? xs.map((m) => balanceOf(m, plan.monthlyRate, plan.savings + purchase))
     : [];
 
   const yMax = Math.max(plan.target, ...highVals, ...baseVals, ...lowVals, ...investVals) * 1.06;
@@ -141,7 +137,7 @@ export function renderChart(
     ? `<polyline class="chart-line-invest" points="${line(investVals)}" />`
     : '';
   const investDot = showInvest
-    ? `<circle class="chart-dot-invest" cx="${xOf(investRetire).toFixed(1)}" cy="${yTarget.toFixed(1)}" r="4" />`
+    ? `<circle class="chart-dot-invest" cx="${xOf(investHitsTarget).toFixed(1)}" cy="${yTarget.toFixed(1)}" r="4" />`
     : '';
 
   const parts = [
