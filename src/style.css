@@ -423,6 +423,10 @@ footer a:hover {
   opacity: 0.55;
 }
 
+.chart-hover-invest {
+  fill: var(--good);
+}
+
 .chart-tooltip {
   position: absolute;
   pointer-events: none;
@@ -450,8 +454,8 @@ footer a:hover {
   color: var(--fg);
 }
 
-.chart-tt-range {
-  color: var(--muted);
-  font-size: 0.72rem;
-  margin-top: 1px;
+.chart-tt-val {
+  margin-left: auto;
+  padding-left: 16px;
+  font-weight: 700;
 }

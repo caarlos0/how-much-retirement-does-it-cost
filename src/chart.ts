@@ -177,11 +177,15 @@ export function renderChart(
     );
   }
 
+  const investHoverDot = showInvest
+    ? `<circle class="chart-hover-dot chart-hover-invest" r="4" />`
+    : '';
   parts.push(
     `<g class="chart-hover" style="display:none">` +
       `<line class="chart-cursor" x1="0" x2="0" y1="${PAD.t}" y2="${yBottom.toFixed(1)}" />` +
-      `<circle class="chart-hover-dot chart-hover-edge" r="3" />` +
-      `<circle class="chart-hover-dot chart-hover-edge" r="3" />` +
+      `<circle class="chart-hover-dot chart-hover-edge chart-hover-low" r="3" />` +
+      `<circle class="chart-hover-dot chart-hover-edge chart-hover-high" r="3" />` +
+      investHoverDot +
       `<circle class="chart-hover-dot chart-hover-base" r="4" />` +
       `</g>`,
     `<rect class="chart-capture" x="${PAD.l}" y="${PAD.t}" width="${plotW.toFixed(1)}" height="${plotH.toFixed(1)}" />`,
@@ -205,9 +209,11 @@ export function renderChart(
   const hover = container.querySelector<SVGGElement>('.chart-hover');
   const cursor = container.querySelector<SVGLineElement>('.chart-cursor');
   const tip = container.querySelector<HTMLDivElement>('.chart-tooltip');
-  const dots = container.querySelectorAll<SVGCircleElement>('.chart-hover-dot');
-  if (!svgEl || !hover || !cursor || !tip || dots.length < 3) return;
-  const [dotLow, dotHigh, dotBase] = dots;
+  const dotLow = container.querySelector<SVGCircleElement>('.chart-hover-low');
+  const dotHigh = container.querySelector<SVGCircleElement>('.chart-hover-high');
+  const dotBase = container.querySelector<SVGCircleElement>('.chart-hover-base');
+  const dotInvest = container.querySelector<SVGCircleElement>('.chart-hover-invest');
+  if (!svgEl || !hover || !cursor || !tip || !dotLow || !dotHigh || !dotBase) return;
 
   const setDot = (el: SVGCircleElement, cx: number, v: number) => {
     el.setAttribute('cx', cx.toFixed(1));
@@ -227,13 +233,18 @@ export function renderChart(
     setDot(dotBase, cx, baseVals[i]);
     setDot(dotLow, cx, lowVals[i]);
     setDot(dotHigh, cx, highVals[i]);
+    if (dotInvest) setDot(dotInvest, cx, investVals[i]);
     hover.style.display = '';
 
     const when = age != null ? `Age ${Math.round(age + xs[i] / 12)}` : `Year ${Math.round(xs[i] / 12)}`;
+    const investRow = showInvest
+      ? `<div class="chart-tt-row"><span class="chart-sw chart-sw-invest"></span>If you invest it<span class="chart-tt-val">${compactMoney(investVals[i], currency)}</span></div>`
+      : '';
     tip.innerHTML =
       `<div class="chart-tt-when">${when}</div>` +
-      `<div class="chart-tt-row"><span class="chart-sw chart-sw-base"></span>${compactMoney(baseVals[i], currency)}</div>` +
-      `<div class="chart-tt-range">${compactMoney(lowVals[i], currency)} – ${compactMoney(highVals[i], currency)}</div>`;
+      `<div class="chart-tt-row"><span class="chart-sw chart-sw-base"></span>Your plan<span class="chart-tt-val">${compactMoney(baseVals[i], currency)}</span></div>` +
+      investRow +
+      `<div class="chart-tt-row"><span class="chart-sw chart-sw-band"></span>Range<span class="chart-tt-val">${compactMoney(lowVals[i], currency)} – ${compactMoney(highVals[i], currency)}</span></div>`;
     tip.hidden = false;
 
     const px = cx / scale;
