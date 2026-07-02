@@ -251,7 +251,14 @@ function render(): void {
   }
 
   const price = numVal(els.price);
-  renderChart(els.chart, { plan, currency, age, yieldPct: s.yield ?? 0, withdrawal: s.withdrawal ?? 0 });
+  renderChart(els.chart, {
+    plan,
+    currency,
+    age,
+    yieldPct: s.yield ?? 0,
+    withdrawal: s.withdrawal ?? 0,
+    purchase: price != null && price > 0 ? price : 0,
+  });
   renderSuggestions(plan, currency, monthsBase, age);
 
   if (price == null || price <= 0) {

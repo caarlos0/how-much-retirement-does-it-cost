@@ -45,9 +45,10 @@ export function renderChart(
     age: number | null;
     yieldPct: number;
     withdrawal: number;
+    purchase: number;
   },
 ): void {
-  const { plan, currency, age, yieldPct, withdrawal } = opts;
+  const { plan, currency, age, yieldPct, withdrawal, purchase } = opts;
   if (plan.target <= 0) {
     container.innerHTML = `<p class="cap">Set a retirement target to see your projected growth.</p>`;
     return;
@@ -122,6 +123,22 @@ export function renderChart(
       `<text class="chart-marker-label" x="${xOf(retireMonths).toFixed(1)}" y="${(PAD.t - 5).toFixed(1)}">retire</text>`
     : '';
 
+  // "If you invest it instead" line: accumulate the extra purchase money and reach
+  // the target sooner. Drawn only through accumulation, ending on the target line.
+  const investRetire = reachable && purchase > 0
+    ? monthsToTarget(plan.savings + purchase, plan)
+    : Infinity;
+  const showInvest = Number.isFinite(investRetire) && investRetire > 0;
+  let investLine = '';
+  let investDot = '';
+  if (showInvest) {
+    const investPlan: Plan = { ...plan, savings: plan.savings + purchase };
+    const pts = xs.filter((m) => m <= investRetire).map((m) => pt(m, balanceAt(m, investPlan)));
+    pts.push(pt(investRetire, plan.target));
+    investLine = `<polyline class="chart-line-invest" points="${pts.join(' ')}" />`;
+    investDot = `<circle class="chart-dot-invest" cx="${xOf(investRetire).toFixed(1)}" cy="${yTarget.toFixed(1)}" r="4" />`;
+  }
+
   const parts = [
     `<line class="chart-axis" x1="${PAD.l}" y1="${PAD.t}" x2="${PAD.l}" y2="${yBottom.toFixed(1)}" />`,
     `<line class="chart-axis" x1="${PAD.l}" y1="${yBottom.toFixed(1)}" x2="${xEnd.toFixed(1)}" y2="${yBottom.toFixed(1)}" />`,
@@ -133,6 +150,7 @@ export function renderChart(
     `<polyline class="chart-line-edge" points="${line(lowVals)}" />`,
     `<polyline class="chart-line-edge" points="${line(highVals)}" />`,
     `<polyline class="chart-line-base" points="${line(baseVals)}" />`,
+    investLine,
   ];
 
   for (const f of [0, 0.25, 0.5, 0.75, 1]) {
@@ -144,6 +162,9 @@ export function renderChart(
 
   if (reachable) {
     parts.push(`<circle class="chart-dot-base" cx="${xOf(monthsBase).toFixed(1)}" cy="${yTarget.toFixed(1)}" r="4" />`);
+  }
+  if (investDot) {
+    parts.push(investDot);
   }
   if (drawingDown && Number.isFinite(depleteMonths) && retireMonths + depleteMonths <= horizon) {
     parts.push(
@@ -163,8 +184,12 @@ export function renderChart(
 
   const svg = `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Projected savings over time: growth toward the target, then retirement drawdown, with a range for higher and lower returns">${parts.join('')}</svg>`;
 
+  const investKey = showInvest
+    ? `<span class="chart-key"><span class="chart-sw chart-sw-invest"></span>If you invest it</span>`
+    : '';
   const legend = `<div class="chart-legend">
     <span class="chart-key"><span class="chart-sw chart-sw-base"></span>Your plan</span>
+    ${investKey}
     <span class="chart-key"><span class="chart-sw chart-sw-band"></span>Range (±${YIELD_BAND_PP}%/yr)</span>
     <span class="chart-key"><span class="chart-sw chart-sw-target"></span>Target</span>
   </div>`;
