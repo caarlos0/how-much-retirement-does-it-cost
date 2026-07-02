@@ -66,3 +66,17 @@ export function requiredMonthly(start: number, months: number, plan: Plan): numb
   const g = Math.pow(1 + r, months);
   return (r * (T - start * g)) / (g - 1);
 }
+
+/**
+ * Months until a retirement balance is exhausted: starting from `start`, earning
+ * `monthlyRate`, and withdrawing `withdrawal` each month. Returns Infinity when
+ * the yield covers the withdrawals, so the balance never runs out.
+ */
+export function monthsUntilDepleted(start: number, monthlyRate: number, withdrawal: number): number {
+  if (withdrawal <= 0) return Infinity;
+  if (start <= 0) return 0;
+  if (monthlyRate === 0) return start / withdrawal;
+  if (start * monthlyRate >= withdrawal) return Infinity; // yield alone covers the withdrawal
+  const wr = withdrawal / monthlyRate;
+  return Math.log(wr / (wr - start)) / Math.log(1 + monthlyRate);
+}

@@ -1,4 +1,10 @@
-import { balanceAt, monthlyRateFromYearly, monthsToTarget, type Plan } from './finance';
+import {
+  balanceAt,
+  monthlyRateFromYearly,
+  monthsToTarget,
+  monthsUntilDepleted,
+  type Plan,
+} from './finance';
 
 const W = 600;
 const H = 280;
@@ -26,31 +32,70 @@ function compactMoney(value: number, currency: string): string {
 }
 
 /**
- * Render an inline SVG chart of projected savings growth into `container`: the
- * plan's central curve plus a shaded band spanning a ±YIELD_BAND_PP yearly-return
- * range. Hovering reveals the projected values at that point in time.
+ * Render an inline SVG chart of the plan into `container`: savings grow toward the
+ * target (with a shaded band spanning a ±YIELD_BAND_PP yearly-return range), then —
+ * once the target is reached — the retirement withdrawal is drawn down against the
+ * yield. Hovering reveals the projected values at that point in time.
  */
 export function renderChart(
   container: HTMLElement,
-  opts: { plan: Plan; currency: string; age: number | null; yieldPct: number },
+  opts: {
+    plan: Plan;
+    currency: string;
+    age: number | null;
+    yieldPct: number;
+    withdrawal: number;
+  },
 ): void {
-  const { plan, currency, age, yieldPct } = opts;
+  const { plan, currency, age, yieldPct, withdrawal } = opts;
   if (plan.target <= 0) {
     container.innerHTML = `<p class="cap">Set a retirement target to see your projected growth.</p>`;
     return;
   }
 
+  const lowRate = monthlyRateFromYearly(yieldPct - YIELD_BAND_PP);
+  const highRate = monthlyRateFromYearly(yieldPct + YIELD_BAND_PP);
+
   const monthsBase = monthsToTarget(plan.savings, plan);
   const reachable = Number.isFinite(monthsBase) && monthsBase > 0;
-  const horizon = reachable ? Math.ceil(monthsBase) : 480;
+  const retireMonths = reachable ? monthsBase : Infinity;
+  const drawingDown = reachable && withdrawal > 0;
 
-  const lowPlan: Plan = { ...plan, monthlyRate: monthlyRateFromYearly(yieldPct - YIELD_BAND_PP) };
-  const highPlan: Plan = { ...plan, monthlyRate: monthlyRateFromYearly(yieldPct + YIELD_BAND_PP) };
+  // Months from retirement until the central plan's balance is exhausted.
+  const depleteMonths = drawingDown
+    ? monthsUntilDepleted(plan.target, plan.monthlyRate, withdrawal)
+    : Infinity;
+
+  let horizon: number;
+  if (!reachable) {
+    horizon = 480;
+  } else if (drawingDown) {
+    const window = Number.isFinite(depleteMonths) ? Math.min(depleteMonths + 24, 480) : 360;
+    horizon = Math.ceil(retireMonths + window);
+  } else {
+    horizon = Math.ceil(retireMonths);
+  }
+
+  // Balance at month m for a given monthly rate: accumulate toward the target,
+  // then (once retired) draw the withdrawal down each month, never below zero.
+  const balanceOf = (m: number, rate: number): number => {
+    if (!drawingDown || m <= retireMonths) {
+      return balanceAt(m, { ...plan, monthlyRate: rate });
+    }
+    const atRetire = balanceAt(retireMonths, { ...plan, monthlyRate: rate });
+    const drawn = balanceAt(m - retireMonths, {
+      ...plan,
+      savings: atRetire,
+      monthly: -withdrawal,
+      monthlyRate: rate,
+    });
+    return Math.max(0, drawn);
+  };
 
   const xs = Array.from({ length: SAMPLES + 1 }, (_, i) => (horizon * i) / SAMPLES);
-  const baseVals = xs.map((m) => balanceAt(m, plan));
-  const lowVals = xs.map((m) => balanceAt(m, lowPlan));
-  const highVals = xs.map((m) => balanceAt(m, highPlan));
+  const baseVals = xs.map((m) => balanceOf(m, plan.monthlyRate));
+  const lowVals = xs.map((m) => balanceOf(m, lowRate));
+  const highVals = xs.map((m) => balanceOf(m, highRate));
 
   const yMax = Math.max(plan.target, ...highVals, ...baseVals, ...lowVals) * 1.06;
   const plotW = W - PAD.l - PAD.r;
@@ -72,10 +117,16 @@ export function renderChart(
   const xLabel = (m: number) =>
     age != null ? String(Math.round(age + m / 12)) : `${Math.round(m / 12)}y`;
 
+  const retireLine = drawingDown
+    ? `<line class="chart-retire" x1="${xOf(retireMonths).toFixed(1)}" y1="${PAD.t}" x2="${xOf(retireMonths).toFixed(1)}" y2="${yBottom.toFixed(1)}" />` +
+      `<text class="chart-marker-label" x="${xOf(retireMonths).toFixed(1)}" y="${(PAD.t - 5).toFixed(1)}">retire</text>`
+    : '';
+
   const parts = [
     `<line class="chart-axis" x1="${PAD.l}" y1="${PAD.t}" x2="${PAD.l}" y2="${yBottom.toFixed(1)}" />`,
     `<line class="chart-axis" x1="${PAD.l}" y1="${yBottom.toFixed(1)}" x2="${xEnd.toFixed(1)}" y2="${yBottom.toFixed(1)}" />`,
     `<polygon class="chart-band" points="${bandPoints}" />`,
+    retireLine,
     `<line class="chart-target" x1="${PAD.l}" y1="${yTarget.toFixed(1)}" x2="${xEnd.toFixed(1)}" y2="${yTarget.toFixed(1)}" />`,
     `<text class="chart-ylabel" x="${PAD.l - 6}" y="${yTarget.toFixed(1)}">${compactMoney(plan.target, currency)}</text>`,
     `<text class="chart-ylabel" x="${PAD.l - 6}" y="${yBottom.toFixed(1)}">0</text>`,
@@ -94,6 +145,11 @@ export function renderChart(
   if (reachable) {
     parts.push(`<circle class="chart-dot-base" cx="${xOf(monthsBase).toFixed(1)}" cy="${yTarget.toFixed(1)}" r="4" />`);
   }
+  if (drawingDown && Number.isFinite(depleteMonths) && retireMonths + depleteMonths <= horizon) {
+    parts.push(
+      `<circle class="chart-dot-depleted" cx="${xOf(retireMonths + depleteMonths).toFixed(1)}" cy="${yBottom.toFixed(1)}" r="4" />`,
+    );
+  }
 
   parts.push(
     `<g class="chart-hover" style="display:none">` +
@@ -105,7 +161,7 @@ export function renderChart(
     `<rect class="chart-capture" x="${PAD.l}" y="${PAD.t}" width="${plotW.toFixed(1)}" height="${plotH.toFixed(1)}" />`,
   );
 
-  const svg = `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Projected savings growth over time, with a range for higher and lower returns">${parts.join('')}</svg>`;
+  const svg = `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Projected savings over time: growth toward the target, then retirement drawdown, with a range for higher and lower returns">${parts.join('')}</svg>`;
 
   const legend = `<div class="chart-legend">
     <span class="chart-key"><span class="chart-sw chart-sw-base"></span>Your plan</span>

@@ -4,6 +4,7 @@ import {
   futureValue,
   monthlyRateFromYearly,
   monthsToTarget,
+  monthsUntilDepleted,
   requiredMonthly,
   yearlyPctFromMonthly,
   type Plan,
@@ -37,6 +38,7 @@ interface Settings {
   monthly: number | null;
   yield: number | null;
   target: number | null;
+  withdrawal: number | null;
 }
 
 const DEFAULTS: Settings = {
@@ -46,6 +48,7 @@ const DEFAULTS: Settings = {
   monthly: 1000,
   yield: 5,
   target: 1_000_000,
+  withdrawal: 4000,
 };
 
 const byId = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -57,6 +60,7 @@ const els = {
   monthly: byId<HTMLInputElement>('monthly'),
   yield: byId<HTMLInputElement>('yield'),
   target: byId<HTMLInputElement>('target'),
+  withdrawal: byId<HTMLInputElement>('withdrawal'),
   price: byId<HTMLInputElement>('price'),
   baseline: byId<HTMLParagraphElement>('baseline'),
   fasterCard: byId<HTMLElement>('faster-card'),
@@ -84,6 +88,7 @@ function readSettings(): Settings {
     monthly: numVal(els.monthly),
     yield: numVal(els.yield),
     target: numVal(els.target),
+    withdrawal: numVal(els.withdrawal),
   };
 }
 
@@ -95,6 +100,7 @@ function applySettings(s: Settings): void {
   els.monthly.value = str(s.monthly);
   els.yield.value = str(s.yield);
   els.target.value = str(s.target);
+  els.withdrawal.value = str(s.withdrawal);
 }
 
 /** Merge stored settings over the defaults, deriving a birth date from a legacy age. */
@@ -230,11 +236,22 @@ function render(): void {
     els.baseline.textContent = `With these numbers you never reach ${targetMoney}. Try a higher monthly investment or yield.`;
   } else {
     const agePart = retireAge != null ? ` — around age ${retireAge}` : '';
-    els.baseline.textContent = `On track to reach ${targetMoney} in ${humanDuration(monthsBase)}${agePart}.`;
+    let text = `On track to reach ${targetMoney} in ${humanDuration(monthsBase)}${agePart}.`;
+    const withdrawal = s.withdrawal ?? 0;
+    if (withdrawal > 0) {
+      const deplete = monthsUntilDepleted(plan.target, rate, withdrawal);
+      if (!Number.isFinite(deplete)) {
+        text += ` Withdrawing ${money(withdrawal, currency)}/mo then is sustainable — the yield keeps up. 🌴`;
+      } else {
+        const untilAge = age != null ? ` (to age ${Math.round(age + (monthsBase + deplete) / 12)})` : '';
+        text += ` Withdrawing ${money(withdrawal, currency)}/mo, it lasts about ${humanDuration(deplete)}${untilAge}.`;
+      }
+    }
+    els.baseline.textContent = text;
   }
 
   const price = numVal(els.price);
-  renderChart(els.chart, { plan, currency, age, yieldPct: s.yield ?? 0 });
+  renderChart(els.chart, { plan, currency, age, yieldPct: s.yield ?? 0, withdrawal: s.withdrawal ?? 0 });
   renderSuggestions(plan, currency, monthsBase, age);
 
   if (price == null || price <= 0) {
@@ -276,7 +293,7 @@ function render(): void {
 }
 
 applySettings(load());
-for (const el of [els.birthDate, els.savings, els.monthly, els.yield, els.target, els.price]) {
+for (const el of [els.birthDate, els.savings, els.monthly, els.yield, els.target, els.withdrawal, els.price]) {
   el.addEventListener('input', render);
 }
 els.currency.addEventListener('change', render);
