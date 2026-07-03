@@ -66,6 +66,7 @@ const els = {
   impact: byId<HTMLDivElement>('impact'),
   chart: byId<HTMLDivElement>('chart'),
   contribChart: byId<HTMLDivElement>('contrib-chart'),
+  share: byId<HTMLButtonElement>('share'),
 };
 
 for (const { code, name } of CURRENCIES) {
@@ -156,6 +157,41 @@ function save(s: Settings): void {
   }
 }
 
+function stateToHash(s: Settings): string {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(s)) {
+    if (value != null && value !== '') params.set(key, String(value));
+  }
+  return params.toString();
+}
+
+/** Read shareable settings from the URL fragment, or null when it carries none. */
+function settingsFromHash(): Settings | null {
+  const params = new URLSearchParams(location.hash.replace(/^#/, ''));
+  if (!Object.keys(DEFAULTS).some((key) => params.has(key))) return null;
+  const num = (key: string, fallback: number | null): number | null => {
+    const raw = params.get(key);
+    if (raw == null) return fallback;
+    const n = Number(raw);
+    return Number.isFinite(n) ? n : fallback;
+  };
+  return {
+    birthDate: params.get('birthDate') ?? DEFAULTS.birthDate,
+    savings: num('savings', DEFAULTS.savings),
+    currency: params.get('currency') ?? DEFAULTS.currency,
+    monthly: num('monthly', DEFAULTS.monthly),
+    yield: num('yield', DEFAULTS.yield),
+    target: num('target', DEFAULTS.target),
+    withdrawal: num('withdrawal', DEFAULTS.withdrawal),
+  };
+}
+
+/** Mirror the current settings into the URL fragment so the page itself is shareable. */
+function updateHash(s: Settings): void {
+  const hash = stateToHash(s);
+  history.replaceState(null, '', hash ? `#${hash}` : location.pathname + location.search);
+}
+
 function money(value: number, currency: string, digits = 0): string {
   try {
     return new Intl.NumberFormat(undefined, {
@@ -226,9 +262,10 @@ function renderSuggestions(
   els.faster.innerHTML = items.length ? `<ul class="faster-list">${items.join('')}</ul>` : '';
 }
 
-function render(): void {
+function render(persist = true): void {
   const s = readSettings();
-  save(s);
+  if (persist) save(s);
+  updateHash(s);
   refreshCompactHints();
 
   const currency = s.currency || 'USD';
@@ -319,9 +356,24 @@ function render(): void {
     <p class="note">Buying it today is like working about ${delayText} longer before you can retire.</p>`;
 }
 
-applySettings(load());
-for (const el of [els.birthDate, els.savings, els.monthly, els.yield, els.target, els.withdrawal, els.price]) {
-  el.addEventListener('input', render);
+async function copyShareLink(): Promise<void> {
+  try {
+    await navigator.clipboard.writeText(location.href);
+    els.share.textContent = 'Copied!';
+    setTimeout(() => (els.share.textContent = 'Copy link'), 1500);
+  } catch {
+    /* clipboard unavailable (insecure context or denied) — the link is still in the address bar */
+  }
 }
-els.currency.addEventListener('change', render);
-render();
+
+const shared = settingsFromHash();
+applySettings(shared ?? load());
+const rerender = () => render();
+for (const el of [els.birthDate, els.savings, els.monthly, els.yield, els.target, els.withdrawal, els.price]) {
+  el.addEventListener('input', rerender);
+}
+els.currency.addEventListener('change', rerender);
+els.share.addEventListener('click', copyShareLink);
+// A shared link is a view of someone else's plan — don't overwrite the visitor's own
+// saved settings until they actually change something.
+render(shared == null);

@@ -262,6 +262,14 @@ footer {
   margin-top: 28px;
 }
 
+footer p {
+  margin: 0;
+}
+
+footer p + p {
+  margin-top: 6px;
+}
+
 footer a {
   color: inherit;
   text-decoration: underline;
@@ -269,6 +277,21 @@ footer a {
 }
 
 footer a:hover {
+  color: var(--fg);
+}
+
+.linkish {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.linkish:hover {
   color: var(--fg);
 }
 
