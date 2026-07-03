@@ -1,5 +1,7 @@
 # How much retirement does it cost?
 
+[![CI](https://github.com/caarlos0/how-much-retirement-does-it-cost/actions/workflows/ci.yml/badge.svg)](https://github.com/caarlos0/how-much-retirement-does-it-cost/actions/workflows/ci.yml)
+
 A tiny, client-only web app that shows what a purchase _really_ costs you — in
 future retirement money and in time.
 
