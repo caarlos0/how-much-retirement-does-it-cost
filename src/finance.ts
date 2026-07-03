@@ -51,9 +51,6 @@ export function balanceAt(months: number, plan: Plan): number {
 /** Yearly yield % to the equivalent monthly compounding rate (decimal). */
 export const monthlyRateFromYearly = (yearlyPct: number) => Math.pow(1 + yearlyPct / 100, 1 / 12) - 1;
 
-/** Monthly yield % to the equivalent yearly yield % (used to migrate old data). */
-export const yearlyPctFromMonthly = (monthlyPct: number) => (Math.pow(1 + monthlyPct / 100, 12) - 1) * 100;
-
 /**
  * Monthly contribution needed to grow from `start` up to `plan.target` in exactly
  * `months`, at the plan's rate. This is the inverse of {@link monthsToTarget}:

@@ -6,17 +6,15 @@ import {
   monthsToTarget,
   monthsUntilDepleted,
   requiredMonthly,
-  yearlyPctFromMonthly,
   type Plan,
 } from './finance';
 import { renderChart, renderContributionsChart } from './chart';
 
 const STORAGE_KEY = 'retirement-calc:v2';
-const LEGACY_KEY = 'retirement-calc:v1';
 
 const isoDate = (d: Date) => d.toISOString().slice(0, 10);
 
-/** ISO birth date for someone `years` old today (used for the default and migration). */
+/** ISO birth date for someone `years` old today (used for the default). */
 function birthDateForAge(years: number): string {
   const d = new Date();
   d.setFullYear(d.getFullYear() - Math.round(years));
@@ -140,31 +138,14 @@ function applySettings(s: Settings): void {
   els.withdrawal.value = str(s.withdrawal);
 }
 
-/** Merge stored settings over the defaults, deriving a birth date from a legacy age. */
-function withBirthDate(stored: Partial<Settings> & { age?: number }): Settings {
-  const merged = { ...DEFAULTS, ...stored };
-  if (stored.birthDate == null && stored.age != null) {
-    merged.birthDate = birthDateForAge(stored.age);
-  }
-  return merged;
-}
-
 function load(): Settings {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return withBirthDate(JSON.parse(raw));
-
-    const legacy = localStorage.getItem(LEGACY_KEY);
-    if (legacy) {
-      const old = JSON.parse(legacy) as Partial<Settings> & { age?: number };
-      // v1 stored the yield as a monthly %; v2 stores it yearly.
-      if (old.yield != null) old.yield = Math.round(yearlyPctFromMonthly(old.yield) * 100) / 100;
-      return withBirthDate(old);
-    }
-    return { ...DEFAULTS };
+    if (raw) return { ...DEFAULTS, ...(JSON.parse(raw) as Partial<Settings>) };
   } catch {
-    return { ...DEFAULTS };
+    /* ignore malformed storage */
   }
+  return { ...DEFAULTS };
 }
 
 function save(s: Settings): void {
