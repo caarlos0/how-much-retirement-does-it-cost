@@ -108,6 +108,12 @@ header p {
   font-weight: 400;
 }
 
+.compact-hint {
+  font-size: 0.72rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
 input,
 select {
   font: inherit;

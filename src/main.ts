@@ -81,6 +81,42 @@ function numVal(el: HTMLInputElement): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+/** Money inputs that get a live compact-magnitude hint below them (1K, 1M, 1B…). */
+const MONEY_INPUTS = [els.savings, els.monthly, els.target, els.withdrawal, els.price];
+const compactHints = new Map<HTMLInputElement, HTMLElement>();
+for (const input of MONEY_INPUTS) {
+  const hint = document.createElement('span');
+  hint.className = 'compact-hint';
+  hint.hidden = true;
+  hint.setAttribute('aria-hidden', 'true');
+  input.after(hint);
+  compactHints.set(input, hint);
+}
+
+function compactNumber(value: number): string {
+  try {
+    return new Intl.NumberFormat(undefined, {
+      notation: 'compact',
+      maximumFractionDigits: 1,
+    }).format(value);
+  } catch {
+    return String(Math.round(value));
+  }
+}
+
+/** Show each money field's value in short notation, hidden below 1,000 (nothing to shorten). */
+function refreshCompactHints(): void {
+  for (const [input, hint] of compactHints) {
+    const n = numVal(input);
+    if (n == null || Math.abs(n) < 1000) {
+      hint.hidden = true;
+    } else {
+      hint.textContent = compactNumber(n);
+      hint.hidden = false;
+    }
+  }
+}
+
 function readSettings(): Settings {
   return {
     birthDate: els.birthDate.value || null,
@@ -212,6 +248,7 @@ function renderSuggestions(
 function render(): void {
   const s = readSettings();
   save(s);
+  refreshCompactHints();
 
   const currency = s.currency || 'USD';
   const rate = monthlyRateFromYearly(s.yield ?? 0);
