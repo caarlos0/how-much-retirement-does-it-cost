@@ -36,7 +36,10 @@
       </header>
 
       <section class="card">
-        <h2>Your plan</h2>
+        <div class="card-head">
+          <h2>Your plan</h2>
+          <button id="share" type="button" class="share-btn">Copy link</button>
+        </div>
         <div class="grid">
           <div class="field">
             <label for="birthdate">Birth date</label>
@@ -62,12 +65,13 @@
             <label for="withdrawal">Monthly withdrawal in retirement <span class="hint">— what you'll live on</span></label>
             <input id="withdrawal" type="number" inputmode="decimal" min="0" step="any" placeholder="4000" />
           </div>
-          <div class="field">
+          <div class="field field-wide">
             <label for="yield">Real yearly yield (%) <span class="hint">— return after inflation</span></label>
             <input id="yield" type="number" inputmode="decimal" step="any" placeholder="5" />
           </div>
         </div>
         <p id="baseline" class="baseline"></p>
+        <p id="baseline-sub" class="baseline-sub" hidden></p>
         <p id="rule-check" class="rule-check" hidden></p>
       </section>
 
@@ -97,7 +101,7 @@
 
       <footer>
         <p>Everything is saved in your browser and shareable via this page's link. Not financial advice.</p>
-        <p><button id="share" type="button" class="linkish">Copy link</button> · <a href="https://github.com/caarlos0/how-much-retirement-does-it-cost" target="_blank" rel="noopener noreferrer">Source on GitHub</a></p>
+        <p><a href="https://github.com/caarlos0/how-much-retirement-does-it-cost" target="_blank" rel="noopener noreferrer">Source on GitHub</a></p>
       </footer>
     </div>
 

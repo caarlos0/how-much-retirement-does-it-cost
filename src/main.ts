@@ -61,6 +61,7 @@ const els = {
   withdrawal: byId<HTMLInputElement>('withdrawal'),
   price: byId<HTMLInputElement>('price'),
   baseline: byId<HTMLParagraphElement>('baseline'),
+  baselineSub: byId<HTMLParagraphElement>('baseline-sub'),
   fasterCard: byId<HTMLElement>('faster-card'),
   faster: byId<HTMLDivElement>('faster'),
   impact: byId<HTMLDivElement>('impact'),
@@ -267,8 +268,18 @@ function renderSuggestions(
  * Cross-check the target against the 4% rule (a nest egg of 25× annual withdrawals):
  * nudge when the target is well below or above what the rule of thumb suggests, and
  * stay silent when they roughly agree.
+ *
+ * The rule of thumb assumes ~4% real returns, while the sustainability verdict above
+ * it trusts the plan's own yield — so the copy is phrased relative to that verdict
+ * (`sustainable`, null when there is none) to never contradict it.
  */
-function renderRuleCheck(target: number, withdrawalMonthly: number, currency: string): void {
+function renderRuleCheck(
+  target: number,
+  withdrawalMonthly: number,
+  currency: string,
+  yieldPct: number,
+  sustainable: boolean | null,
+): void {
   const el = els.ruleCheck;
   if (target <= 0 || withdrawalMonthly <= 0) {
     el.hidden = true;
@@ -277,14 +288,22 @@ function renderRuleCheck(target: number, withdrawalMonthly: number, currency: st
   const annual = withdrawalMonthly * 12;
   const ruleTarget = annual * 25;
   const ratio = target / ruleTarget;
+  el.hidden = false;
   if (ratio < 0.9) {
-    el.className = 'rule-check warn';
-    el.innerHTML = `⚠️ To withdraw ${money(withdrawalMonthly, currency)}/mo, the <strong>4% rule</strong> suggests a nest egg near <strong>${money(ruleTarget, currency)}</strong> — 25× your ${money(annual, currency)}/yr. Your target of ${money(target, currency)} may fall short; consider raising it or trimming withdrawals.`;
-    el.hidden = false;
+    if (sustainable) {
+      el.className = 'rule-check';
+      el.innerHTML = `💡 That only holds if you really get ${yieldPct}%/yr after inflation. The more cautious <strong>4% rule</strong> would want a nest egg near <strong>${money(ruleTarget, currency)}</strong> — 25× your ${money(annual, currency)}/yr — as a safety margin.`;
+    } else {
+      el.className = 'rule-check warn';
+      el.innerHTML = `⚠️ To withdraw ${money(withdrawalMonthly, currency)}/mo, the <strong>4% rule</strong> suggests a nest egg near <strong>${money(ruleTarget, currency)}</strong> — 25× your ${money(annual, currency)}/yr. Your target of ${money(target, currency)} may fall short; consider raising it or trimming withdrawals.`;
+    }
   } else if (ratio > 1.1) {
     el.className = 'rule-check';
-    el.innerHTML = `💡 Your target of ${money(target, currency)} sits well above the <strong>4% rule</strong>'s ${money(ruleTarget, currency)} for ${money(withdrawalMonthly, currency)}/mo — you could retire on less or spend a little more.`;
-    el.hidden = false;
+    if (sustainable === false) {
+      el.innerHTML = `💡 Your target clears the <strong>4% rule</strong>'s ${money(ruleTarget, currency)}, but at ${yieldPct}%/yr real yield the withdrawals still draw the balance down — the rule counts on about 4% real returns.`;
+    } else {
+      el.innerHTML = `💡 Your target of ${money(target, currency)} sits well above the <strong>4% rule</strong>'s ${money(ruleTarget, currency)} for ${money(withdrawalMonthly, currency)}/mo — you could retire on less or spend a little more.`;
+    }
   } else {
     el.hidden = true;
   }
@@ -311,7 +330,13 @@ function render(persist = true): void {
   const reachable = Number.isFinite(monthsBase) && monthsBase > 0;
   const age = ageFromBirthDate(s.birthDate);
   const retireAge = age != null ? Math.round(age + monthsBase / 12) : null;
+  const withdrawal = s.withdrawal ?? 0;
+  // Whether the retirement withdrawal outlasts the money, under the plan's own yield.
+  const deplete =
+    reachable && withdrawal > 0 ? monthsUntilDepleted(plan.target, rate, withdrawal) : NaN;
+  const sustainable = reachable && withdrawal > 0 ? !Number.isFinite(deplete) : null;
 
+  let baselineSub = '';
   if (!hasTarget) {
     els.baseline.textContent = 'Set a retirement target to see your projection.';
   } else if (monthsBase <= 0) {
@@ -319,22 +344,21 @@ function render(persist = true): void {
   } else if (!Number.isFinite(monthsBase)) {
     els.baseline.textContent = `With these numbers you never reach ${targetMoney}. Try a higher monthly investment or yield.`;
   } else {
-    const agePart = retireAge != null ? ` — around age ${retireAge}` : '';
-    let text = `On track to reach ${targetMoney} in ${humanDuration(monthsBase)}${agePart}.`;
-    const withdrawal = s.withdrawal ?? 0;
+    const agePart = retireAge != null ? ` — around age <strong>${retireAge}</strong>` : '';
+    els.baseline.innerHTML = `On track to reach ${targetMoney} in <strong>${humanDuration(monthsBase)}</strong>${agePart}.`;
     if (withdrawal > 0) {
-      const deplete = monthsUntilDepleted(plan.target, rate, withdrawal);
-      if (!Number.isFinite(deplete)) {
-        text += ` Withdrawing ${money(withdrawal, currency)}/mo then is sustainable — the yield keeps up. 🌴`;
+      if (sustainable) {
+        baselineSub = `Withdrawing ${money(withdrawal, currency)}/mo then is sustainable — the yield keeps up. 🌴`;
       } else {
         const untilAge = age != null ? ` (to age ${Math.round(age + (monthsBase + deplete) / 12)})` : '';
-        text += ` Withdrawing ${money(withdrawal, currency)}/mo, it lasts about ${humanDuration(deplete)}${untilAge}.`;
+        baselineSub = `Withdrawing ${money(withdrawal, currency)}/mo, it lasts about ${humanDuration(deplete)}${untilAge}.`;
       }
     }
-    els.baseline.textContent = text;
   }
+  els.baselineSub.hidden = baselineSub === '';
+  els.baselineSub.textContent = baselineSub;
 
-  renderRuleCheck(plan.target, s.withdrawal ?? 0, currency);
+  renderRuleCheck(plan.target, withdrawal, currency, s.yield ?? 0, sustainable);
 
   const price = numVal(els.price);
   renderChart(els.chart, {
@@ -372,8 +396,12 @@ function render(persist = true): void {
     0,
     monthsBase - (Number.isFinite(monthsIfInvested) ? monthsIfInvested : monthsBase),
   );
-  const delayText = humanDuration(delay);
+  const delayText = delay > 0 ? humanDuration(delay) : 'less than a day';
   const agePart = retireAge != null ? ` (around age ${retireAge})` : '';
+  const notePart =
+    plan.monthly > 0
+      ? `<p class="note">That's ${(price / plan.monthly).toFixed(1)}× what you invest in a whole month.</p>`
+      : '';
 
   els.impact.innerHTML = `
     <div class="cap">That ${money(price, currency)} could grow to</div>
@@ -383,7 +411,7 @@ function render(persist = true): void {
       <span class="chip">⏳ Delays retirement by <span class="v">${delayText}</span></span>
       <span class="chip">📈 <span class="v">${multiple.toFixed(1)}×</span> your money</span>
     </div>
-    <p class="note">Buying it today is like working about ${delayText} longer before you can retire.</p>`;
+    ${notePart}`;
 }
 
 async function copyShareLink(): Promise<void> {
@@ -403,6 +431,12 @@ for (const el of [els.birthDate, els.savings, els.monthly, els.yield, els.target
   el.addEventListener('input', rerender);
 }
 els.currency.addEventListener('change', rerender);
+// Scrolling the page over a focused number field silently changes its value — drop focus instead.
+for (const el of [els.savings, els.monthly, els.yield, els.target, els.withdrawal, els.price]) {
+  el.addEventListener('wheel', () => {
+    if (document.activeElement === el) el.blur();
+  });
+}
 els.share.addEventListener('click', copyShareLink);
 // A shared link is a view of someone else's plan — don't overwrite the visitor's own
 // saved settings until they actually change something.

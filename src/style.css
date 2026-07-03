@@ -79,6 +79,34 @@ header p {
   margin: 0 0 16px;
 }
 
+.card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.card-head h2 {
+  margin: 0;
+}
+
+.share-btn {
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--muted);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 4px 12px;
+  cursor: pointer;
+}
+
+.share-btn:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
 .grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -95,6 +123,10 @@ header p {
   display: flex;
   flex-direction: column;
   gap: 6px;
+}
+
+.field-wide {
+  grid-column: 1 / -1;
 }
 
 .field label {
@@ -123,6 +155,18 @@ select {
   background: var(--bg);
   color: var(--fg);
   width: 100%;
+}
+
+/* Spinner buttons are useless on money fields and invite accidental changes. */
+input[type='number'] {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+input[type='number']::-webkit-outer-spin-button,
+input[type='number']::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
 }
 
 input:focus,
@@ -160,9 +204,16 @@ input[type='date']::-webkit-calendar-picker-indicator {
 }
 
 .baseline {
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin: 18px 0 0;
+}
+
+.baseline-sub {
   color: var(--muted);
-  font-size: 0.9rem;
-  margin: 16px 0 0;
+  font-size: 0.85rem;
+  margin: 4px 0 0;
 }
 
 .rule-check {
@@ -295,21 +346,6 @@ footer a:hover {
   color: var(--fg);
 }
 
-.linkish {
-  font: inherit;
-  color: inherit;
-  background: none;
-  border: 0;
-  padding: 0;
-  cursor: pointer;
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-
-.linkish:hover {
-  color: var(--fg);
-}
-
 .chart-wrap {
   margin-top: 4px;
   position: relative;
@@ -403,7 +439,12 @@ footer a:hover {
 }
 
 .chart text {
-  font-size: 11px;
+  font-size: 13px;
+}
+
+.chart-grid {
+  stroke: var(--border);
+  stroke-dasharray: 3 4;
 }
 
 .chart-ylabel {

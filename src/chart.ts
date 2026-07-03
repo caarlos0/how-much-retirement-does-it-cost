@@ -148,8 +148,10 @@ export function renderChart(
     ...xs.map((m, i) => pt(m, lowVals[i])).reverse(),
   ].join(' ');
 
-  const xLabel = (m: number) =>
-    age != null ? String(Math.round(age + m / 12)) : `${Math.round(m / 12)}y`;
+  const xLabel = (m: number, withUnit = false) =>
+    age != null
+      ? `${withUnit ? 'age ' : ''}${Math.round(age + m / 12)}`
+      : `${Math.round(m / 12)}y`;
 
   const retireLine = drawingDown
     ? `<line class="chart-retire" x1="${xOf(retireMonths).toFixed(1)}" y1="${PAD.t}" x2="${xOf(retireMonths).toFixed(1)}" y2="${yBottom.toFixed(1)}" />` +
@@ -163,9 +165,19 @@ export function renderChart(
     ? `<circle class="chart-dot-invest" cx="${xOf(investHitsTarget).toFixed(1)}" cy="${yTarget.toFixed(1)}" r="4" />`
     : '';
 
+  // A faint mid gridline so values between 0 and the top are readable; skipped
+  // when it would sit on top of the target line and its label.
+  const yMid = yOf(yMax / 2);
+  const midGrid =
+    Math.abs(yMid - yTarget) > 14
+      ? `<line class="chart-grid" x1="${PAD.l}" y1="${yMid.toFixed(1)}" x2="${xEnd.toFixed(1)}" y2="${yMid.toFixed(1)}" />` +
+        `<text class="chart-ylabel" x="${PAD.l - 6}" y="${yMid.toFixed(1)}">${compactMoney(yMax / 2, currency)}</text>`
+      : '';
+
   const parts = [
     `<line class="chart-axis" x1="${PAD.l}" y1="${PAD.t}" x2="${PAD.l}" y2="${yBottom.toFixed(1)}" />`,
     `<line class="chart-axis" x1="${PAD.l}" y1="${yBottom.toFixed(1)}" x2="${xEnd.toFixed(1)}" y2="${yBottom.toFixed(1)}" />`,
+    midGrid,
     `<polygon class="chart-band" points="${bandPoints}" />`,
     retireLine,
     `<line class="chart-target" x1="${PAD.l}" y1="${yTarget.toFixed(1)}" x2="${xEnd.toFixed(1)}" y2="${yTarget.toFixed(1)}" />`,
@@ -180,7 +192,7 @@ export function renderChart(
   for (const f of [0, 0.25, 0.5, 0.75, 1]) {
     const m = horizon * f;
     parts.push(
-      `<text class="chart-xlabel" x="${xOf(m).toFixed(1)}" y="${(yBottom + 18).toFixed(1)}">${xLabel(m)}</text>`,
+      `<text class="chart-xlabel" x="${xOf(m).toFixed(1)}" y="${(yBottom + 18).toFixed(1)}">${xLabel(m, f === 0)}</text>`,
     );
   }
 
@@ -239,7 +251,7 @@ export function renderChart(
     el.setAttribute('cy', yOf(v).toFixed(1));
   };
 
-  svgEl.addEventListener('pointermove', (ev) => {
+  const onPoint = (ev: PointerEvent) => {
     const rect = svgEl.getBoundingClientRect();
     if (rect.width === 0) return;
     const scale = W / rect.width;
@@ -277,7 +289,11 @@ export function renderChart(
     tip.style.left = `${px.toFixed(1)}px`;
     tip.style.top = `${py.toFixed(1)}px`;
     tip.style.transform = `translate(${rightHalf ? 'calc(-100% - 14px)' : '14px'}, -50%)`;
-  });
+  };
+
+  // pointerdown makes the tooltip reachable with a tap on touch screens.
+  svgEl.addEventListener('pointermove', onPoint);
+  svgEl.addEventListener('pointerdown', onPoint);
 
   svgEl.addEventListener('pointerleave', () => {
     hover.style.display = 'none';
@@ -327,12 +343,22 @@ export function renderContributionsChart(
   const slot = plotW / bars.length;
   const barW = Math.max(1.5, slot * 0.68);
   const xOf = (i: number) => PAD.l + slot * (i + 0.5);
-  const xLabel = (m: number) =>
-    age != null ? String(Math.round(age + m / 12)) : `${Math.round(m / 12)}y`;
+  const xLabel = (m: number, withUnit = false) =>
+    age != null
+      ? `${withUnit ? 'age ' : ''}${Math.round(age + m / 12)}`
+      : `${Math.round(m / 12)}y`;
+
+  const yMid = yOf(yMax / 2);
+  const midGrid =
+    Math.abs(yMid - yOf(plan.target)) > 14
+      ? `<line class="chart-grid" x1="${PAD.l}" y1="${yMid.toFixed(1)}" x2="${(PAD.l + plotW).toFixed(1)}" y2="${yMid.toFixed(1)}" />` +
+        `<text class="chart-ylabel" x="${(PAD.l - 6).toFixed(1)}" y="${yMid.toFixed(1)}">${compactMoney(yMax / 2, currency)}</text>`
+      : '';
 
   const parts: string[] = [
     `<line class="chart-axis" x1="${PAD.l}" y1="${PAD.t}" x2="${PAD.l}" y2="${yBottom.toFixed(1)}" />`,
     `<line class="chart-axis" x1="${PAD.l}" y1="${yBottom.toFixed(1)}" x2="${(PAD.l + plotW).toFixed(1)}" y2="${yBottom.toFixed(1)}" />`,
+    midGrid,
     `<line class="chart-target" x1="${PAD.l}" y1="${yOf(plan.target).toFixed(1)}" x2="${(PAD.l + plotW).toFixed(1)}" y2="${yOf(plan.target).toFixed(1)}" />`,
     `<text class="chart-ylabel" x="${(PAD.l - 6).toFixed(1)}" y="${yOf(plan.target).toFixed(1)}">${compactMoney(plan.target, currency)}</text>`,
     `<text class="chart-ylabel" x="${(PAD.l - 6).toFixed(1)}" y="${yBottom.toFixed(1)}">0</text>`,
@@ -356,7 +382,7 @@ export function renderContributionsChart(
   for (let k = 0; k < nLabels; k++) {
     const i = Math.round((k / (nLabels - 1)) * (bars.length - 1));
     parts.push(
-      `<text class="chart-xlabel" x="${xOf(i).toFixed(1)}" y="${(yBottom + 18).toFixed(1)}">${xLabel(bars[i].m)}</text>`,
+      `<text class="chart-xlabel" x="${xOf(i).toFixed(1)}" y="${(yBottom + 18).toFixed(1)}">${xLabel(bars[i].m, k === 0)}</text>`,
     );
   }
 
@@ -379,7 +405,7 @@ export function renderContributionsChart(
   const tip = container.querySelector<HTMLDivElement>('.chart-tooltip');
   if (!svgEl || !highlight || !tip) return;
 
-  svgEl.addEventListener('pointermove', (ev) => {
+  const onPoint = (ev: PointerEvent) => {
     const rect = svgEl.getBoundingClientRect();
     if (rect.width === 0) return;
     const scale = W / rect.width;
@@ -404,7 +430,11 @@ export function renderContributionsChart(
     tip.style.left = `${cx.toFixed(1)}px`;
     tip.style.top = `${py.toFixed(1)}px`;
     tip.style.transform = `translate(${rightHalf ? 'calc(-100% - 12px)' : '12px'}, -50%)`;
-  });
+  };
+
+  // pointerdown makes the tooltip reachable with a tap on touch screens.
+  svgEl.addEventListener('pointermove', onPoint);
+  svgEl.addEventListener('pointerdown', onPoint);
 
   svgEl.addEventListener('pointerleave', () => {
     highlight.style.display = 'none';
