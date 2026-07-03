@@ -66,6 +66,7 @@ const els = {
   impact: byId<HTMLDivElement>('impact'),
   chart: byId<HTMLDivElement>('chart'),
   contribChart: byId<HTMLDivElement>('contrib-chart'),
+  ruleCheck: byId<HTMLParagraphElement>('rule-check'),
   share: byId<HTMLButtonElement>('share'),
 };
 
@@ -262,6 +263,33 @@ function renderSuggestions(
   els.faster.innerHTML = items.length ? `<ul class="faster-list">${items.join('')}</ul>` : '';
 }
 
+/**
+ * Cross-check the target against the 4% rule (a nest egg of 25× annual withdrawals):
+ * nudge when the target is well below or above what the rule of thumb suggests, and
+ * stay silent when they roughly agree.
+ */
+function renderRuleCheck(target: number, withdrawalMonthly: number, currency: string): void {
+  const el = els.ruleCheck;
+  if (target <= 0 || withdrawalMonthly <= 0) {
+    el.hidden = true;
+    return;
+  }
+  const annual = withdrawalMonthly * 12;
+  const ruleTarget = annual * 25;
+  const ratio = target / ruleTarget;
+  if (ratio < 0.9) {
+    el.className = 'rule-check warn';
+    el.innerHTML = `⚠️ To withdraw ${money(withdrawalMonthly, currency)}/mo, the <strong>4% rule</strong> suggests a nest egg near <strong>${money(ruleTarget, currency)}</strong> — 25× your ${money(annual, currency)}/yr. Your target of ${money(target, currency)} may fall short; consider raising it or trimming withdrawals.`;
+    el.hidden = false;
+  } else if (ratio > 1.1) {
+    el.className = 'rule-check';
+    el.innerHTML = `💡 Your target of ${money(target, currency)} sits well above the <strong>4% rule</strong>'s ${money(ruleTarget, currency)} for ${money(withdrawalMonthly, currency)}/mo — you could retire on less or spend a little more.`;
+    el.hidden = false;
+  } else {
+    el.hidden = true;
+  }
+}
+
 function render(persist = true): void {
   const s = readSettings();
   if (persist) save(s);
@@ -305,6 +333,8 @@ function render(persist = true): void {
     }
     els.baseline.textContent = text;
   }
+
+  renderRuleCheck(plan.target, s.withdrawal ?? 0, currency);
 
   const price = numVal(els.price);
   renderChart(els.chart, {

@@ -165,6 +165,21 @@ input[type='date']::-webkit-calendar-picker-indicator {
   margin: 16px 0 0;
 }
 
+.rule-check {
+  margin: 12px 0 0;
+  padding: 9px 12px;
+  border-left: 3px solid var(--accent);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
+.rule-check.warn {
+  border-left-color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 8%, transparent);
+}
+
 .faster-list {
   list-style: none;
   margin: 0;
